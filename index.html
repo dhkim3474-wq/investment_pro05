@@ -35,6 +35,9 @@ tailwind.config = {
 .black-swan-close{position:absolute;top:22px;right:22px;width:58px;height:58px;border-radius:999px;border:3px solid #fecaca;background:rgba(15,23,42,.35);color:#fff;font-size:34px;font-weight:900;line-height:1;cursor:pointer;z-index:2}
 .black-swan-close:hover{background:#ef4444;transform:scale(1.04)}
 
+.ai-history-modal{position:absolute;inset:0;background:rgba(15,23,42,.65);z-index:85;display:none;align-items:center;justify-content:center;padding:24px}
+.ai-history-modal.active{display:flex}
+
 @media print{body{background:#fff!important}.no-print{display:none!important}.game-screen{display:flex!important}.citi-tag{display:none}.print-card{box-shadow:none!important;border:1px solid #ddd!important}}
 </style>
 </head>
@@ -65,6 +68,15 @@ tailwind.config = {
       </div>
       <p class="text-sm text-red-100/90 mt-6 font-bold">오른쪽 위 X 버튼을 클릭해야 창이 닫힙니다.</p>
     </div>
+  </div>
+</div>
+
+<div id="ai-history-modal" class="ai-history-modal no-print">
+  <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto custom-scrollbar p-6 relative shadow-2xl">
+    <button onclick="closeAiHistoryModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-2xl font-black" aria-label="닫기">×</button>
+    <h3 class="text-lg font-black text-slate-900 mb-1" id="ai-history-modal-title">AI 투자 의사결정 기록</h3>
+    <p class="text-xs text-slate-500 mb-4">라운드별 AI Tool · 프롬프트 · 분석내용</p>
+    <div id="ai-history-modal-body" class="grid grid-cols-1 gap-3"></div>
   </div>
 </div>
 
@@ -162,7 +174,18 @@ tailwind.config = {
   <div class="bg-slate-50 border rounded-2xl p-5 mb-6"><h3 class="text-lg font-black text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-list-check text-brand-500"></i> 라운드별 AI 활용 기록 요약</h3><div id="ai-history-summary" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div></div>
   <div class="border-t pt-6 mb-6"><h3 class="text-xl font-black mb-4 flex items-center gap-2"><i class="fa-solid fa-graduation-cap text-brand-500"></i> 배운 핵심 레슨</h3><div class="grid md:grid-cols-3 gap-4"><div class="bg-blue-50 p-4 rounded-xl border"><h4 class="font-black text-blue-800 text-sm mb-2">1. 시장과 개별기업</h4><p class="text-xs text-slate-600">ETF는 시장 전체, 개별주는 특정 산업·기업 이슈에 더 크게 반응합니다.</p></div><div class="bg-amber-50 p-4 rounded-xl border"><h4 class="font-black text-amber-800 text-sm mb-2">2. 환율 효과</h4><p class="text-xs text-slate-600">VOO는 미국 주식 수익률뿐 아니라 원/달러 환율 변화도 수익률에 반영됩니다.</p></div><div class="bg-rose-50 p-4 rounded-xl border"><h4 class="font-black text-rose-800 text-sm mb-2">3. 레버리지</h4><p class="text-xs text-slate-600">대출은 수익과 손실을 모두 키우므로 고금리·하락장에서는 특히 위험합니다.</p></div></div></div>
   <div class="bg-purple-50 p-4 rounded-xl border mb-6"><h4 class="font-black text-purple-800 text-sm mb-2">4. 블랙스완(돌발상황) 리스크</h4><p class="text-xs text-slate-600">전쟁, 팬데믹, 금융위기와 같은 예상치 못한 사건이 발생하면 좋은 뉴스와 경제지표가 있어도 투자성과가 예상대로 나오지 않을 수 있습니다. 따라서 분산투자와 위험관리가 중요합니다.</p></div>
+  <button onclick="submitResult()" id="btn-submit-result" class="w-full py-4 mb-2 bg-brand-600 hover:bg-brand-700 text-white font-black rounded-2xl transition text-base shadow-lg flex items-center justify-center gap-2 no-print"><i class="fa-solid fa-cloud-arrow-up"></i> 결과 제출</button>
+  <p id="submit-status" class="text-xs font-bold text-center mb-3 min-h-[16px]"></p>
   <button onclick="window.print()"  class="w-full py-4 mb-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition text-base shadow-lg flex items-center justify-center gap-2 no-print"><i class="fa-solid fa-file-pdf"></i> 성적표 PDF 저장/인쇄</button><button onclick="resetGame()" class="w-full py-4 bg-slate-950 hover:bg-slate-900 text-white font-black rounded-2xl transition text-base shadow-lg flex items-center justify-center gap-2 no-print">새 전략으로 다시 도전 <i class="fa-solid fa-rotate-right"></i></button>
+</section>
+
+<section class="game-screen flex-col p-6 md:p-10 bg-white" id="screen-leaderboard">
+  <div class="border-b border-slate-100 pb-4 mb-5 text-center"><span class="inline-block text-4xl mb-1">🏅</span><h3 class="text-2xl font-black text-slate-900">전체 팀 결과 리더보드</h3><p id="leaderboard-status" class="text-xs md:text-sm text-slate-500 mt-1">불러오는 중...</p></div>
+  <div class="flex-1 overflow-y-auto max-h-[440px] pr-2 custom-scrollbar space-y-3 mb-6" id="leaderboard-container"></div>
+  <div class="flex flex-col sm:flex-row gap-3 no-print">
+    <button onclick="loadLeaderboard()" class="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition flex items-center justify-center gap-2"><i class="fa-solid fa-rotate"></i> 새로고침</button>
+    <button onclick="showScreen('screen-final')" class="flex-1 py-3.5 bg-slate-950 hover:bg-slate-900 text-white font-black rounded-xl transition">결과 화면으로 돌아가기</button>
+  </div>
 </section>
 </div>
 
@@ -181,7 +204,10 @@ const companies=[
 {id:'samsung',name:'삼성전자',category:'반도체 제조',desc:'💾 메모리 반도체·AI 칩 인프라 핵심 기업',fee:0.001,color:'bg-cyan-700',dividend:0.018,mechanics:'반도체 수출지수, AI 칩 수요, 환율, 글로벌 공급망에 민감하다.'}
 ];
 const INITIAL_ASSETS=10000000, MAX_LOAN=10000000, REPORT_COST=500000, QUIZ_BONUS=300000;
+const RESULT_API_URL='http://3.38.102.55:4000/api/submit';
+const RESULTS_API_URL='http://3.38.102.55:4000/api/results';
 let currentRound=1, netAssets=INITIAL_ASSETS, currentCash=INITIAL_ASSETS, currentDebt=0, baseMarketRate=3.0, debtInterestRate=0.06, isPremiumReportSubscribed=false, quizAnswered=false, gameHistory=[], chartRef=null;
+let finalGrade='', finalScores={returnScore:0,diversificationScore:0,riskScore:0,aiScore:0,aiGrade:'',total:0}, finalAvgDivScore=0, resultSubmitted=false;
 const scenarios=[
 {round:1,headline:'AI 슈퍼사이클과 한국 반도체 수출 회복',usEvent:'미국 AI 슈퍼사이클',krEvent:'한국 반도체 수출 호황',fx:1280,prevFx:1320,marketRate:2.3,debtRate:0.045,korea:{rate:'2.75%',gdp:'+2.8%',cpi:'2.1%',unemployment:'3.0%',fx:'1,280원',semi:'+28%'},usa:{fed:'3.25%',gdp:'+3.1%',cpi:'2.3%',unemployment:'3.8%',ai:'+45%',capex:'+38%'},news:'미국 빅테크가 AI 데이터센터 투자를 크게 늘리고, 한국 반도체 수출이 회복됩니다. 원화 강세로 VOO의 환율 보너스는 줄지만 삼성전자와 AI 관련 자산에는 강한 호재입니다.',rates:{tiger200:.18,voo:.20,hybe:.18,musinsa:.10,oliveyoung:.08,roblox:.30,apple:.24,tesla:.32,openai:.60,toss:.08,samsung:.42},quiz:{q:'AI 투자가 급증하면 가장 직접적인 수혜를 받을 가능성이 큰 자산은?',options:['OpenAI와 삼성전자','올리브영과 무신사','미투자 현금'],answer:0,explain:'AI 투자 확대는 원천 AI 기업과 반도체 인프라 기업에 직접적인 호재입니다.'},advice:'AI 투자와 반도체 수출이 동시에 강한 해입니다. OpenAI, 삼성전자, 애플, VOO가 핵심 수혜를 받습니다.',premiumReport:'OpenAI +60%, 삼성전자 +42%, 테슬라 +32%, 애플 +24%, VOO 기본 +20%가 유리합니다. TIGER200도 반도체 비중 효과로 +18%입니다.'},
 {round:2,headline:'한국 내수 회복과 미국 소비 둔화의 엇갈린 흐름',usEvent:'미국 소비 둔화',krEvent:'한국 내수 회복',fx:1360,prevFx:1280,marketRate:3.1,debtRate:0.065,korea:{rate:'3.25%',gdp:'+2.2%',cpi:'2.8%',unemployment:'3.2%',fx:'1,360원',semi:'+5%'},usa:{fed:'4.25%',gdp:'+1.4%',cpi:'3.1%',unemployment:'4.4%',ai:'+12%',capex:'+8%'},news:'미국은 고금리로 소비가 둔화되지만 원/달러 환율 상승으로 미국 ETF 투자자는 환율 효과를 얻습니다. 한국은 내수가 회복되며 뷰티·패션·엔터 업종이 선전합니다.',rates:{tiger200:.07,voo:.02,hybe:.22,musinsa:.28,oliveyoung:.35,roblox:-.12,apple:.02,tesla:-.10,openai:.05,toss:.12,samsung:.04},quiz:{q:'원/달러 환율이 1280원에서 1360원으로 오르면 VOO 투자자에게 어떤 효과가 생길까?',options:['환율 보너스','환율 손실','아무 영향 없음'],answer:0,explain:'달러 자산을 원화로 환산할 때 환율 상승은 추가 수익 요인이 됩니다.'},advice:'내수 회복과 환율 상승이 동시에 나타났습니다. 올리브영·무신사·하이브와 VOO 환율효과가 유리했습니다.',premiumReport:'올리브영 +35%, 무신사 +28%, 하이브 +22%가 강합니다. VOO는 미국 시장 둔화에도 환율효과로 방어됩니다.'},
@@ -309,10 +335,9 @@ function calcAiFinalEvaluation(){
   else if(score>=12){grade='B';feedback='AI를 활용했지만 일부 기록이 단순 정보검색 수준에 머물렀습니다. AI 답변을 그대로 쓰기보다 “왜 이 자산이 유리한가?”, “어떤 리스크가 있는가?”, “다른 대안과 비교하면 어떤가?”처럼 후속 질문을 통해 투자근거를 보완하면 좋습니다.';}
   return {score,grade,feedback,adequate,rounds,toolRounds,analysisRounds,promptRounds,keywordAvg};
 }
-function renderAiHistorySummary(){
-  const target=document.getElementById('ai-history-summary');
-  if(!target)return;
-  target.innerHTML=gameHistory.map(h=>{
+function aiHistoryRowsHtml(historyArr){
+  if(!Array.isArray(historyArr)||historyArr.length===0)return '<p class="text-xs text-slate-400">AI 활용 기록이 없습니다.</p>';
+  return historyArr.map(h=>{
     const ai=h.aiEval||{};
     const tool=escapeHtml(ai.tool||'미작성');
     const prompt=escapeHtml(ai.prompt||'미작성');
@@ -320,7 +345,29 @@ function renderAiHistorySummary(){
     const status=ai.isAdequate?'보너스 적용':'보너스 미적용';
     const statusClass=ai.isAdequate?'text-indigo-700 bg-indigo-50 border-indigo-200':'text-rose-700 bg-rose-50 border-rose-200';
     return `<div class="bg-white border rounded-2xl p-4 text-xs shadow-sm"><div class="flex justify-between items-center mb-2"><span class="font-black text-slate-900">Year ${h.round}</span><span class="px-2 py-0.5 rounded border font-black ${statusClass}">${status}</span></div><p class="mb-1"><strong class="text-slate-500">AI Tool:</strong> ${tool}</p><p class="mb-1"><strong class="text-slate-500">프롬프트:</strong> ${prompt}</p><p><strong class="text-slate-500">분석내용:</strong> ${analysis}</p></div>`;
-  }).join('')||'<p class="text-xs text-slate-400">AI 활용 기록이 없습니다.</p>';
+  }).join('');
+}
+function closeAiHistoryModal(){document.getElementById('ai-history-modal')?.classList.remove('active')}
+async function viewAiHistory(id,teamName){
+  const modal=document.getElementById('ai-history-modal');
+  const titleEl=document.getElementById('ai-history-modal-title');
+  const bodyEl=document.getElementById('ai-history-modal-body');
+  titleEl.innerText=`${teamName} · AI 투자 의사결정 기록`;
+  bodyEl.innerHTML='<p class="text-xs text-slate-400">불러오는 중...</p>';
+  modal.classList.add('active');
+  try{
+    const res=await fetch(`${RESULTS_API_URL}/${id}`);
+    const data=await res.json();
+    if(!res.ok||!data.ok)throw new Error(data.error||'불러오기 실패');
+    bodyEl.innerHTML=aiHistoryRowsHtml(data.result?.history||[]);
+  }catch(err){
+    bodyEl.innerHTML='<p class="text-xs text-rose-500">AI 기록을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.</p>';
+  }
+}
+function renderAiHistorySummary(){
+  const target=document.getElementById('ai-history-summary');
+  if(!target)return;
+  target.innerHTML=aiHistoryRowsHtml(gameHistory);
 }
 function showFinalResults(){
   document.getElementById('final-team-name').innerText=(document.getElementById('team-name')?.value||'팀 이름 미입력');
@@ -351,7 +398,101 @@ function showFinalResults(){
   document.getElementById('final-icon').innerText=icon;
   document.getElementById('final-grade-title').innerText=`${title} · 투자점수 ${total}/100 · AI활용 ${aiFinal.score}/25`;
   document.getElementById('debriefing-text').innerText=`당신은 “${type}”입니다. 최종 수익률은 ${(y*100).toFixed(1)}%, 평균 분산점수는 ${avgDiv}/40입니다. AI 활용은 ${aiFinal.grade}등급(${aiFinal.score}/25)이며, ${aiFinal.rounds}개 라운드 중 ${aiFinal.adequate}개 라운드에서 AI 보너스가 적용되었습니다. 다음 도전에서는 고금리 구간의 대출 사용량, 성장주 집중도, AI 프롬프트의 구체성을 더 세밀하게 조절해 보세요.`;
+  finalGrade=grade;
+  finalScores={returnScore,diversificationScore,riskScore,aiScore:aiFinal.score,aiGrade:aiFinal.grade,total};
+  finalAvgDivScore=avgDiv;
+  resultSubmitted=false;
+  const btnSubmit=document.getElementById('btn-submit-result');
+  btnSubmit.disabled=false;
+  btnSubmit.innerHTML='<i class="fa-solid fa-cloud-arrow-up"></i> 결과 제출';
+  btnSubmit.className='w-full py-4 mb-2 bg-brand-600 hover:bg-brand-700 text-white font-black rounded-2xl transition text-base shadow-lg flex items-center justify-center gap-2 no-print';
+  document.getElementById('submit-status').innerText='';
   showScreen('screen-final')
+}
+async function submitResult(){
+  if(resultSubmitted){showToast('이미 제출했습니다','ℹ️');return}
+  const btn=document.getElementById('btn-submit-result');
+  const statusEl=document.getElementById('submit-status');
+  btn.disabled=true;
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> 제출 중...';
+  statusEl.className='text-xs font-bold text-center mb-3 min-h-[16px] text-slate-400';
+  statusEl.innerText='';
+  const y=(netAssets-INITIAL_ASSETS)/INITIAL_ASSETS;
+  const payload={
+    teamName: document.getElementById('team-name')?.value.trim()||'팀 이름 미입력',
+    teamMembers: document.getElementById('team-members')?.value.trim()||'팀원 명단 미입력',
+    finalAssets: netAssets,
+    finalYieldPct: Math.round(y*1000)/10,
+    scores: finalScores,
+    grade: finalGrade,
+    gradeTitle: document.getElementById('final-grade-title')?.innerText||'',
+    avgDiversificationScore: finalAvgDivScore,
+    gameVersion: 'ai_bonus_final_feedback',
+    history: gameHistory
+  };
+  try{
+    const res=await fetch(RESULT_API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'제출 실패');
+    resultSubmitted=true;
+    btn.innerHTML='<i class="fa-solid fa-check"></i> 제출 완료';
+    btn.className='w-full py-4 mb-2 bg-slate-300 text-slate-500 font-black rounded-2xl text-base shadow-lg flex items-center justify-center gap-2 no-print cursor-default';
+    statusEl.innerText='결과가 정상적으로 제출되었습니다.';
+    statusEl.className='text-xs font-bold text-center mb-3 min-h-[16px] text-emerald-600';
+    showToast('결과 제출 완료!','✅');
+    showScreen('screen-leaderboard');
+    loadLeaderboard();
+  }catch(err){
+    btn.disabled=false;
+    btn.innerHTML='<i class="fa-solid fa-cloud-arrow-up"></i> 결과 제출';
+    statusEl.innerText='제출에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.';
+    statusEl.className='text-xs font-bold text-center mb-3 min-h-[16px] text-rose-600';
+    showToast('결과 제출 실패','❌');
+  }
+}
+async function loadLeaderboard(){
+  const statusEl=document.getElementById('leaderboard-status');
+  const container=document.getElementById('leaderboard-container');
+  statusEl.innerText='불러오는 중...';
+  statusEl.className='text-xs md:text-sm text-slate-500 mt-1';
+  try{
+    const res=await fetch(RESULTS_API_URL);
+    const data=await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||'불러오기 실패');
+    const list=data.results||[];
+    if(list.length===0){statusEl.innerText='아직 제출된 결과가 없습니다.';container.innerHTML='';return}
+    statusEl.innerText=`총 ${list.length}개 팀 결과 (총점 높은 순)`;
+    container.innerHTML=list.map((r,i)=>{
+      const rankBadge=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}위`;
+      const yieldVal=Number(r.finalYieldPct)||0;
+      const yieldColor=yieldVal>=0?'text-emerald-600':'text-rose-600';
+      const submittedDate=r.submittedAt?new Date(r.submittedAt).toLocaleString('ko-KR'):'-';
+      const aiGrade=r.scores?.aiGrade;
+      const aiCell=aiGrade?`<div><span class="text-[10px] text-slate-400 block">AI등급</span><strong class="text-indigo-600">${escapeHtml(aiGrade)}</strong></div>`:'';
+      const aiHistoryBtn=aiGrade?`<button onclick="viewAiHistory('${r._id}','${escapeHtml(r.teamName).replace(/'/g,"\\'")}')" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-black rounded-xl border border-indigo-200 flex items-center gap-1.5 shrink-0"><i class="fa-solid fa-robot"></i> AI 기록</button>`:'';
+      return `<div class="bg-slate-50 border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-2xl w-10 text-center shrink-0">${rankBadge}</span>
+          <div class="min-w-0">
+            <h4 class="font-black text-slate-900 truncate">${escapeHtml(r.teamName)}</h4>
+            <p class="text-[11px] text-slate-500 truncate">${escapeHtml(r.teamMembers)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 sm:gap-6 text-right shrink-0">
+          <div><span class="text-[10px] text-slate-400 block">등급</span><strong class="text-slate-700">${escapeHtml(r.grade)}</strong></div>
+          <div><span class="text-[10px] text-slate-400 block">총점</span><strong class="text-slate-700">${r.scores?.total ?? 0}/100</strong></div>
+          ${aiCell}
+          <div><span class="text-[10px] text-slate-400 block">수익률</span><strong class="${yieldColor}">${(yieldVal>=0?'+':'')+yieldVal.toFixed(1)}%</strong></div>
+          <div class="hidden md:block"><span class="text-[10px] text-slate-400 block">제출시각</span><span class="text-[11px] text-slate-500">${submittedDate}</span></div>
+          ${aiHistoryBtn}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(err){
+    statusEl.innerText='리더보드를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.';
+    statusEl.className='text-xs md:text-sm text-rose-500 mt-1';
+    container.innerHTML='';
+  }
 }
 function resetGame(){showScreen('screen-cover')}
 document.addEventListener('DOMContentLoaded',()=>{renderTutorialCompanies();resetGame()});
